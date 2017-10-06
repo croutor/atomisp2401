@@ -1,24 +1,19 @@
 diff --git a/drivers/staging/media/atomisp/platform/intel-mid/atomisp_gmin_platform.c b/drivers/staging/media/atomisp/platform/intel-mid/atomisp_gmin_platform.c
-index edaae93af8f9..16623beaa1e4 100644
+index edaae93af8f9..7ea2c7732245 100644
 --- a/drivers/staging/media/atomisp/platform/intel-mid/atomisp_gmin_platform.c
 +++ b/drivers/staging/media/atomisp/platform/intel-mid/atomisp_gmin_platform.c
-@@ -6,29 +6,74 @@
+@@ -6,8 +6,9 @@
  #include <linux/acpi.h>
  #include <linux/delay.h>
  #include <media/v4l2-subdev.h>
 -#include <linux/mfd/intel_soc_pmic.h>
--#include "../../include/linux/vlv2_plat_clock.h"
+ #include "../../include/linux/vlv2_plat_clock.h"
 +#include <linux/mfd/axp20x.h>
 +#include <linux/regmap.h>
-+#include <linux/vlv2_plat_clock.h>
  #include <linux/regulator/consumer.h>
  #include <linux/gpio/consumer.h>
  #include <linux/gpio.h>
- #include <linux/platform_device.h>
--#include "../../include/linux/atomisp_platform.h"
--#include "../../include/linux/atomisp_gmin_platform.h"
-+#include <linux/atomisp_platform.h>
-+#include <linux/atomisp_gmin_platform.h>
+@@ -17,18 +18,62 @@
  
  #define MAX_SUBDEVS 8
  
@@ -652,6 +647,3 @@ index edaae93af8f9..16623beaa1e4 100644
  	return -EINVAL;
  }
  
--- 
-2.11.0
-

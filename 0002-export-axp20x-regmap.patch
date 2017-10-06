@@ -1,5 +1,5 @@
 From d8a9b241ffc71497f5a27f1ea6fde32198fb6a98 Mon Sep 17 00:00:00 2001
-From: Vincent Hervieux <vincent.hervieux@telecomsante.com>
+From: Vincent Hervieux <vincent.hervieux@gmail.com>
 Date: Thu, 5 Oct 2017 13:46:29 +0200
 Subject: [PATCH] export axp20x regmap
 

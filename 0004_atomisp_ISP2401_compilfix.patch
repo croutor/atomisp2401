@@ -1,0 +1,427 @@
+From c92075a6cb0d4184f085f53464c663a62d4dc4c4 Mon Sep 17 00:00:00 2001
+From: Vincent Hervieux <vincent.hervieux@gmail.com>
+Date: Fri, 6 Oct 2017 14:26:13 +0200
+Subject: [PATCH] atomisp_ISP2401_compilfix
+
+---
+ .../media/atomisp/pci/atomisp2/atomisp_cmd.c       | 14 +++-
+ .../media/atomisp/pci/atomisp2/atomisp_v4l2.c      |  6 +-
+ .../css2400/runtime/debug/src/ia_css_debug.c       |  6 --
+ .../media/atomisp/pci/atomisp2/css2400/sh_css.c    | 95 ----------------------
+ .../atomisp/pci/atomisp2/css2400/sh_css_params.c   | 10 +--
+ .../media/atomisp/pci/atomisp2/css2400/sh_css_sp.c |  8 +-
+ 6 files changed, 21 insertions(+), 118 deletions(-)
+
+diff --git a/drivers/staging/media/atomisp/pci/atomisp2/atomisp_cmd.c b/drivers/staging/media/atomisp/pci/atomisp2/atomisp_cmd.c
+index f48bf451c1f5..3a9ed64c1f9d 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp2/atomisp_cmd.c
++++ b/drivers/staging/media/atomisp/pci/atomisp2/atomisp_cmd.c
+@@ -1045,9 +1045,8 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
+ 				asd->re_trigger_capture = false;
+ 				dev_dbg(isp->dev, "Trigger capture again for new buffer. err=%d\n",
+ 						err);
+-			} else {
+-				asd->re_trigger_capture = true;
+-			}
++		} else {
++			asd->re_trigger_capture = true;
+ #endif
+ 		}
+ 		break;
+@@ -1205,6 +1204,15 @@ void atomisp_buf_done(struct atomisp_sub_device *asd, int error,
+ 			atomisp_css_update_isp_params(asd);
+ 		}
+ 		break;
++	case IA_CSS_BUFFER_TYPE_INVALID:
++	case IA_CSS_BUFFER_TYPE_INPUT_FRAME:
++	case IA_CSS_BUFFER_TYPE_RAW_OUTPUT_FRAME:
++	case IA_CSS_BUFFER_TYPE_CUSTOM_INPUT:
++	case IA_CSS_BUFFER_TYPE_CUSTOM_OUTPUT:
++	case IA_CSS_BUFFER_TYPE_PARAMETER_SET:
++	case IA_CSS_BUFFER_TYPE_PER_FRAME_PARAMETER_SET:
++	case IA_CSS_NUM_DYNAMIC_BUFFER_TYPE:
++	case IA_CSS_NUM_BUFFER_TYPE:
+ 	default:
+ 		break;
+ 	}
+diff --git a/drivers/staging/media/atomisp/pci/atomisp2/atomisp_v4l2.c b/drivers/staging/media/atomisp/pci/atomisp2/atomisp_v4l2.c
+index 663aa916e3ca..dfb647f0bcf9 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp2/atomisp_v4l2.c
++++ b/drivers/staging/media/atomisp/pci/atomisp2/atomisp_v4l2.c
+@@ -1602,4 +1602,8 @@ module_exit(atomisp_exit);
+ MODULE_AUTHOR("Wen Wang <wen.w.wang@intel.com>");
+ MODULE_AUTHOR("Xiaolin Zhang <xiaolin.zhang@intel.com>");
+ MODULE_LICENSE("GPL");
+-MODULE_DESCRIPTION("Intel ATOM Platform ISP Driver");
++#if defined(ISP2400) || defined(ISP2400B0)
++MODULE_DESCRIPTION("Intel ATOM Platform ISP 2400 Driver");
++#elif defined(ISP2401)
++MODULE_DESCRIPTION("Intel ATOM Platform ISP 2401 Driver");
++#endif
+diff --git a/drivers/staging/media/atomisp/pci/atomisp2/css2400/runtime/debug/src/ia_css_debug.c b/drivers/staging/media/atomisp/pci/atomisp2/css2400/runtime/debug/src/ia_css_debug.c
+index 0fa7cb2423d8..e8d7e0439ad6 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp2/css2400/runtime/debug/src/ia_css_debug.c
++++ b/drivers/staging/media/atomisp/pci/atomisp2/css2400/runtime/debug/src/ia_css_debug.c
+@@ -39,9 +39,6 @@
+ #include "ia_css_isp_param.h"
+ #include "sh_css_params.h"
+ #include "ia_css_bufq.h"
+-#ifdef ISP2401
+-#include "ia_css_queue.h"
+-#endif
+ 
+ #include "ia_css_isp_params.h"
+ 
+@@ -49,9 +46,6 @@
+ #include "assert_support.h"
+ #include "print_support.h"
+ #include "string_support.h"
+-#ifdef ISP2401
+-#include "ia_css_system_ctrl.h"
+-#endif
+ 
+ #include "fifo_monitor.h"
+ 
+diff --git a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css.c b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css.c
+index e882b5596813..495289b85bf6 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css.c
++++ b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css.c
+@@ -1496,7 +1496,6 @@ sh_css_invalidate_shading_tables(struct ia_css_stream *stream)
+ 		"sh_css_invalidate_shading_tables() leave: return_void\n");
+ }
+ 
+-#ifndef ISP2401
+ static void
+ enable_interrupts(enum ia_css_irq_type irq_type)
+ {
+@@ -1537,7 +1536,6 @@ enable_interrupts(enum ia_css_irq_type irq_type)
+ 	IA_CSS_LEAVE_PRIVATE("");
+ }
+ 
+-#endif
+ 
+ static bool sh_css_setup_spctrl_config(const struct ia_css_fw_info *fw,
+ 							const char * program,
+@@ -1709,11 +1707,7 @@ ia_css_init(const struct ia_css_env *env,
+ 	enable = gpio_reg_load(GPIO0_ID, _gpio_block_reg_do_e)
+ 							| GPIO_FLASH_PIN_MASK;
+ 	sh_css_mmu_set_page_table_base_index(mmu_l1_base);
+-#ifndef ISP2401
+ 	my_css_save.mmu_base = mmu_l1_base;
+-#else
+-	ia_css_save_mmu_base_addr(mmu_l1_base);
+-#endif
+ 
+ 	ia_css_reset_defaults(&my_css);
+ 
+@@ -1726,13 +1720,8 @@ ia_css_init(const struct ia_css_env *env,
+ 		return err;
+ 	}
+ 
+-#ifndef ISP2401
+ 	IA_CSS_LOG("init: %d", my_css_save_initialized);
+-#else
+-	ia_css_save_restore_data_init();
+-#endif
+ 
+-#ifndef ISP2401
+ 	if (!my_css_save_initialized)
+ 	{
+ 		my_css_save_initialized = true;
+@@ -1740,21 +1729,14 @@ ia_css_init(const struct ia_css_env *env,
+ 		memset(my_css_save.stream_seeds, 0, sizeof(struct sh_css_stream_seed) * MAX_ACTIVE_STREAMS);
+ 		IA_CSS_LOG("init: %d mode=%d", my_css_save_initialized, my_css_save.mode);
+ 	}
+-#endif
+ 	mipi_init();
+ 
+-#ifndef ISP2401
+ 	/* In case this has been programmed already, update internal
+ 	   data structure ... DEPRECATED */
+ 	my_css.page_table_base_index = mmu_get_page_table_base_index(MMU0_ID);
+ 
+-#endif
+ 	my_css.irq_type = irq_type;
+-#ifndef ISP2401
+ 	my_css_save.irq_type = irq_type;
+-#else
+-	ia_css_save_irq_type(irq_type);
+-#endif
+ 	enable_interrupts(my_css.irq_type);
+ 
+ 	/* configure GPIO to output mode */
+@@ -1786,9 +1768,7 @@ ia_css_init(const struct ia_css_env *env,
+ 			return err;
+ 		}
+ 		fw_explicitly_loaded = false;
+-#ifndef ISP2401
+ 		my_css_save.loaded_fw = (struct ia_css_fw *)fw;
+-#endif
+ 	}
+ 	if(!sh_css_setup_spctrl_config(&sh_css_sp_fw,SP_PROG_NAME,&spctrl_cfg))
+ 		return IA_CSS_ERR_INTERNAL_ERROR;
+@@ -9776,7 +9756,6 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
+ 	*stream = curr_stream;
+ 
+ ERR:
+-#ifndef ISP2401
+ 	if (err == IA_CSS_SUCCESS)
+ 	{
+ 		/* working mode: enter into the seed list */
+@@ -9797,18 +9776,10 @@ ia_css_stream_create(const struct ia_css_stream_config *stream_config,
+ 				}
+ 				break;
+ 			}
+-#else
+-	if (err == IA_CSS_SUCCESS) {
+-		err = ia_css_save_stream(curr_stream);
+-#endif
+ 	} else {
+ 		ia_css_stream_destroy(curr_stream);
+ 	}
+-#ifndef ISP2401
+ 	IA_CSS_LEAVE("return_err=%d mode=%d", err, my_css_save.mode);
+-#else
+-	IA_CSS_LEAVE("return_err=%d", err);
+-#endif
+ 	return err;
+ }
+ 
+@@ -9817,10 +9788,6 @@ ia_css_stream_destroy(struct ia_css_stream *stream)
+ {
+ 	int i;
+ 	enum ia_css_err err = IA_CSS_SUCCESS;
+-#ifdef ISP2401
+-	enum ia_css_err err1 = IA_CSS_SUCCESS;
+-	enum ia_css_err err2 = IA_CSS_SUCCESS;
+-#endif
+ 
+ 	IA_CSS_ENTER_PRIVATE("stream = %p", stream);
+ 	if (stream == NULL) {
+@@ -9857,13 +9824,7 @@ ia_css_stream_destroy(struct ia_css_stream *stream)
+ 				}
+ 			}
+ 		}
+-#ifndef ISP2401
+ 		if (stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR) {
+-#else
+-		if (stream->config.mode == IA_CSS_INPUT_MODE_BUFFERED_SENSOR ||
+-			stream->config.mode == IA_CSS_INPUT_MODE_TPG ||
+-			stream->config.mode == IA_CSS_INPUT_MODE_PRBS) {
+-#endif
+ 			for (i = 0; i < stream->num_pipes; i++) {
+ 				struct ia_css_pipe *entry = stream->pipes[i];
+ 				/* free any mipi frames that are remaining:
+@@ -9915,7 +9876,6 @@ ia_css_stream_destroy(struct ia_css_stream *stream)
+ 	kfree(stream->pipes);
+ 	stream->pipes = NULL;
+ 	stream->num_pipes = 0;
+-#ifndef ISP2401
+ 	/* working mode: take out of the seed list */
+ 	if (my_css_save.mode == sh_css_mode_working)
+ 		for(i=0;i<MAX_ACTIVE_STREAMS;i++)
+@@ -9925,23 +9885,10 @@ ia_css_stream_destroy(struct ia_css_stream *stream)
+ 				my_css_save.stream_seeds[i].stream = NULL;
+ 				break;
+ 			}
+-#else
+-	err2 = ia_css_save_restore_remove_stream(stream);
+-
+-	err1 = (err != IA_CSS_SUCCESS) ? err : err2;
+-#endif
+ 	kfree(stream);
+-#ifndef ISP2401
+ 	IA_CSS_LEAVE_ERR(err);
+-#else
+-	IA_CSS_LEAVE_ERR(err1);
+-#endif
+ 
+-#ifndef ISP2401
+ 	return err;
+-#else
+-	return err1;
+-#endif
+ }
+ 
+ enum ia_css_err
+@@ -9965,7 +9912,6 @@ ia_css_stream_get_info(const struct ia_css_stream *stream,
+ enum ia_css_err
+ ia_css_stream_load(struct ia_css_stream *stream)
+ {
+-#ifndef ISP2401
+ 	int i;
+ 	enum ia_css_err err;
+ 	assert(stream != NULL);
+@@ -9998,11 +9944,6 @@ ia_css_stream_load(struct ia_css_stream *stream)
+ 		}
+ 	ia_css_debug_dtrace(IA_CSS_DEBUG_TRACE,	"ia_css_stream_load() exit, \n");
+ 	return IA_CSS_SUCCESS;
+-#else
+-	/* TODO remove function - DEPRECATED */
+-	(void)stream;
+-	return IA_CSS_ERR_NOT_SUPPORTED;
+-#endif
+ }
+ 
+ enum ia_css_err
+@@ -10113,7 +10054,6 @@ ia_css_stream_has_stopped(struct ia_css_stream *stream)
+ 	return stopped;
+ }
+ 
+-#ifndef ISP2401
+ /*
+  * Destroy the stream and all the pipes related to it.
+  * The stream handle is used to identify the correct entry in the css_save struct
+@@ -10141,7 +10081,6 @@ ia_css_stream_unload(struct ia_css_stream *stream)
+ 	return IA_CSS_SUCCESS;
+ }
+ 
+-#endif
+ enum ia_css_err
+ ia_css_temp_pipe_to_pipe_id(const struct ia_css_pipe *pipe, enum ia_css_pipe_id *pipe_id)
+ {
+@@ -10427,11 +10366,6 @@ ia_css_start_sp(void)
+ 	sh_css_setup_queues();
+ 	ia_css_bufq_dump_queue_info();
+ 
+-#ifdef ISP2401
+-	if (ia_css_is_system_mode_suspend_or_resume() == false) { /* skip in suspend/resume flow */
+-		ia_css_set_system_mode(IA_CSS_SYS_MODE_WORKING);
+-	}
+-#endif
+ 	IA_CSS_LEAVE_ERR(err);
+ 	return err;
+ }
+@@ -10495,16 +10429,8 @@ ia_css_stop_sp(void)
+ 
+ 	sh_css_hmm_buffer_record_uninit();
+ 
+-#ifndef ISP2401
+ 	/* clear pending param sets from refcount */
+ 	sh_css_param_clear_param_sets();
+-#else
+-	if (ia_css_is_system_mode_suspend_or_resume() == false) { /* skip in suspend/resume flow */
+-		/* clear pending param sets from refcount */
+-		sh_css_param_clear_param_sets();
+-		ia_css_set_system_mode(IA_CSS_SYS_MODE_INIT);  /* System is initialized but not 'running' */
+-	}
+-#endif
+ 
+ 	IA_CSS_LEAVE_ERR(err);
+ 	return err;
+@@ -11003,15 +10929,8 @@ sh_css_hmm_buffer_record_init(void)
+ {
+ 	int i;
+ 
+-#ifndef ISP2401
+ 	for (i = 0; i < MAX_HMM_BUFFER_NUM; i++) {
+ 		sh_css_hmm_buffer_record_reset(&hmm_buffer_record[i]);
+-#else
+-	if (ia_css_is_system_mode_suspend_or_resume() == false) { /* skip in suspend/resume flow */
+-		for (i = 0; i < MAX_HMM_BUFFER_NUM; i++) {
+-			sh_css_hmm_buffer_record_reset(&hmm_buffer_record[i]);
+-		}
+-#endif
+ 	}
+ }
+ 
+@@ -11021,28 +10940,14 @@ sh_css_hmm_buffer_record_uninit(void)
+ 	int i;
+ 	struct sh_css_hmm_buffer_record *buffer_record = NULL;
+ 
+-#ifndef ISP2401
+ 	buffer_record = &hmm_buffer_record[0];
+ 	for (i = 0; i < MAX_HMM_BUFFER_NUM; i++) {
+ 		if (buffer_record->in_use) {
+ 			if (buffer_record->h_vbuf != NULL)
+ 				ia_css_rmgr_rel_vbuf(hmm_buffer_pool, &buffer_record->h_vbuf);
+ 			sh_css_hmm_buffer_record_reset(buffer_record);
+-#else
+-	if (ia_css_is_system_mode_suspend_or_resume() == false) { /* skip in suspend/resume flow */
+-		buffer_record = &hmm_buffer_record[0];
+-		for (i = 0; i < MAX_HMM_BUFFER_NUM; i++) {
+-			if (buffer_record->in_use) {
+-				if (buffer_record->h_vbuf != NULL)
+-					ia_css_rmgr_rel_vbuf(hmm_buffer_pool, &buffer_record->h_vbuf);
+-				sh_css_hmm_buffer_record_reset(buffer_record);
+-			}
+-			buffer_record++;
+-#endif
+ 		}
+-#ifndef ISP2401
+ 		buffer_record++;
+-#endif
+ 	}
+ }
+ 
+diff --git a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_params.c b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_params.c
+index 48224370b8bf..f975f2238423 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_params.c
++++ b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_params.c
+@@ -2697,7 +2697,6 @@ ia_css_pipe_get_isp_config(struct ia_css_pipe *pipe,
+ 	IA_CSS_LEAVE("void");
+ }
+ 
+-#ifndef ISP2401
+ /*
+  * coding style says the return of "mmgr_NULL" is the error signal
+  *
+@@ -2763,8 +2762,6 @@ static bool reallocate_buffer(
+ 	return ret;
+ }
+ 
+-#endif
+-
+ struct ia_css_isp_3a_statistics *
+ ia_css_isp_3a_statistics_allocate(const struct ia_css_3a_grid_info *grid)
+ {
+@@ -3129,7 +3126,8 @@ sh_css_init_isp_params_from_global(struct ia_css_stream *stream,
+ 		ia_css_sdis_clear_coefficients(&params->dvs_coefs);
+ 		params->dis_coef_table_changed = true;
+ #ifdef ISP2401
+-		ia_css_tnr3_set_default_config(&params->tnr3_config);
++		// is missing:
++		//ia_css_tnr3_set_default_config(&params->tnr3_config);
+ #endif
+ 	}
+ 	else
+@@ -3929,9 +3927,7 @@ sh_css_param_update_isp_params(struct ia_css_pipe *curr_pipe,
+ 			 */
+ 			g_param_buffer_enqueue_count++;
+ 			assert(g_param_buffer_enqueue_count < g_param_buffer_dequeue_count+50);
+-#ifdef ISP2401
+-			ia_css_save_latest_paramset_ptr(pipe, cpy);
+-#endif
++
+ 			/*
+ 			 * Tell the SP which queues are not empty,
+ 			 * by sending the software event.
+diff --git a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_sp.c b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_sp.c
+index e6a345979ff1..54f84a1fb8bf 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_sp.c
++++ b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_sp.c
+@@ -117,7 +117,8 @@ copy_isp_stage_to_sp_stage(void)
+ 	*/
+ 	sh_css_sp_stage.enable.sdis = sh_css_isp_stage.binary_info.enable.dis;
+ 	sh_css_sp_stage.enable.s3a = sh_css_isp_stage.binary_info.enable.s3a;
+-#ifdef ISP2401	
++#if defined(IS_ISP_2500_SYSTEM)
++	sh_css_sp_stage.enable.dvs_stats = sh_css_isp_stage.binary_info.enable.dvs_stats;
+ 	sh_css_sp_stage.enable.lace_stats = sh_css_isp_stage.binary_info.enable.lace_stats;
+ #endif	
+ }
+@@ -818,11 +819,6 @@ configure_isp_from_args(
+ 	bool deinterleaved)
+ {
+ 	enum ia_css_err err = IA_CSS_SUCCESS;
+-#ifdef ISP2401
+-	struct ia_css_pipe *pipe = find_pipe_by_num(pipeline->pipe_num);
+-	const struct ia_css_resolution *res;
+-
+-#endif
+ 	ia_css_fpn_configure(binary,  &binary->in_frame_info);
+ 	ia_css_crop_configure(binary, &args->delay_frames[0]->info);
+ 	ia_css_qplane_configure(pipeline, binary, &binary->in_frame_info);
+-- 
+2.11.0
+

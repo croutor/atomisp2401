@@ -54,7 +54,7 @@ index 2bd98f0667ec..27ac23c0c18d 100644
 +ifeq ($(CONFIG_VIDEO_ATOMISP_ISP2401),y)
 +# Anniedale (Merrifield+ / Moorefield), Cherrytrail
 +DEFINES += -DATOMISP_POSTFIX=\"css2401a0_v21\" -DISP2401A0
-+DEFINES += -DSYSTEM_hive_isp_css_2400_system -DISP2401 -DISP2401_NEW_INPUT_SYSTEM
++DEFINES += -DSYSTEM_hive_isp_css_2401_system -DISP2401 -DISP2401_NEW_INPUT_SYSTEM
 +endif
  
  ccflags-y += $(INCLUDES) $(DEFINES) -fno-common

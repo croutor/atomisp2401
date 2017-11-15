@@ -1,0 +1,59 @@
+Signed-off-by: Alan Cox <alan@xxxxxxxxxxxxxxx>
+---
+ .../staging/media/atomisp/pci/atomisp2/hmm/hmm.c   |   21 +++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/staging/media/atomisp/pci/atomisp2/hmm/hmm.c b/drivers/staging/media/atomisp/pci/atomisp2/hmm/hmm.c
+index a1c81c12718c..dfb9bf54b5d2 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp2/hmm/hmm.c
++++ b/drivers/staging/media/atomisp/pci/atomisp2/hmm/hmm.c
+@@ -42,6 +42,8 @@ static ia_css_ptr dummy_ptr;
+ static bool hmm_initialized;
+ struct _hmm_mem_stat hmm_mem_stat;
+ 
++static void hmm_do_free(ia_css_ptr virt);
++
+ /*
+  * p: private
+  * s: shared
+@@ -211,7 +213,7 @@ void hmm_cleanup(void)
+ 	sysfs_remove_group(&atomisp_dev->kobj, atomisp_attribute_group);
+ 
+ 	/* free dummy memory first */
+-	hmm_free(dummy_ptr);
++	hmm_do_free(dummy_ptr);
+ 	dummy_ptr = 0;
+ 
+ 	hmm_bo_device_exit(&bo_device);
+@@ -268,13 +270,10 @@ ia_css_ptr hmm_alloc(size_t bytes, enum hmm_bo_type type,
+ 	return 0;
+ }
+ 
+-void hmm_free(ia_css_ptr virt)
++static void hmm_do_free(ia_css_ptr virt)
+ {
+-	struct hmm_buffer_object *bo;
+-
+-	WARN_ON(!virt);
+-
+-	bo = hmm_bo_device_search_start(&bo_device, (unsigned int)virt);
++	struct hmm_buffer_object *bo =
++		hmm_bo_device_search_start(&bo_device, (unsigned int)virt);
+ 
+ 	if (!bo) {
+ 		dev_err(atomisp_dev,
+@@ -290,6 +289,14 @@ void hmm_free(ia_css_ptr virt)
+ 	hmm_bo_unref(bo);
+ }
+ 
++
++void hmm_free(ia_css_ptr virt)
++{
++	WARN_ON(!virt);
++
++	hmm_do_free(virt);
++}
++
+ static inline int hmm_check_bo(struct hmm_buffer_object *bo, unsigned int ptr)
+ {
+ 	if (!bo) {

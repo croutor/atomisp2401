@@ -1,0 +1,18 @@
+Signed-off-by: Alan Cox <alan@xxxxxxxxxxxxxxx>
+---
+ .../atomisp/pci/atomisp2/css2400/sh_css_firmware.c |    2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_firmware.c b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_firmware.c
+index 8158ea40d069..f181bd8fcee2 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_firmware.c
++++ b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_firmware.c
+@@ -288,8 +288,6 @@ void sh_css_unload_firmware(void)
+ 		for (i = 0; i < sh_css_num_binaries; i++) {
+ 			if (fw_minibuffer[i].name)
+ 				kfree((void *)fw_minibuffer[i].name);
+-			if (fw_minibuffer[i].buffer)
+-				vfree((void *)fw_minibuffer[i].buffer);
+ 		}
+ 		kfree(fw_minibuffer);
+ 		fw_minibuffer = NULL;

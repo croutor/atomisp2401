@@ -1,37 +1,29 @@
 diff --git a/drivers/staging/media/atomisp/platform/intel-mid/atomisp_gmin_platform.c b/drivers/staging/media/atomisp/platform/intel-mid/atomisp_gmin_platform.c
-index edaae93af8f9..7ea2c7732245 100644
+index bf9f34b7ad72..ff260c5cb9ba 100644
 --- a/drivers/staging/media/atomisp/platform/intel-mid/atomisp_gmin_platform.c
 +++ b/drivers/staging/media/atomisp/platform/intel-mid/atomisp_gmin_platform.c
-@@ -6,8 +6,9 @@
- #include <linux/acpi.h>
+@@ -8,6 +8,7 @@
  #include <linux/delay.h>
  #include <media/v4l2-subdev.h>
--#include <linux/mfd/intel_soc_pmic.h>
- #include "../../include/linux/vlv2_plat_clock.h"
+ #include <linux/mfd/intel_soc_pmic.h>
 +#include <linux/mfd/axp20x.h>
-+#include <linux/regmap.h>
  #include <linux/regulator/consumer.h>
  #include <linux/gpio/consumer.h>
  #include <linux/gpio.h>
-@@ -17,18 +18,62 @@
+@@ -17,13 +18,54 @@
  
  #define MAX_SUBDEVS 8
  
-+
 +#define DEVNAME_PMIC_AXP "INT33F4:00"
 +#define DEVNAME_PMIC_TI  "INT33F5:00"
 +#define DEVNAME_PMIC_CRYSTALCOVE "INT33FD:00"
 +
- /* Should be defined in vlv2_plat_clock API, isn't: */
- #define VLV2_CLK_PLL_19P2MHZ 1
- #define VLV2_CLK_XTAL_19P2MHZ 0
- #define VLV2_CLK_ON      1
- #define VLV2_CLK_OFF     2
+ #define VLV2_CLK_PLL_19P2MHZ 1 /* XTAL on CHT */
 +
 +/* X-Powers AXP288 register hackery */
-+#define ALDO1_CTRL3_REG	0x13
-+#define ALDO1_SEL_REG	0x28
-+#define ALDO1_2P8V	0x15   //0x2a  default:0x16
++#define ALDO1_CTRL3_REG        0x13
++#define ALDO1_SEL_REG  0x28
++#define ALDO1_2P8V     0x15   //0x2a  default:0x16
 +#define ALDO1_CTRL3_SHIFT 0x05
 +
 +#define ELDO_CTRL_REG   0x12
@@ -42,22 +34,21 @@ index edaae93af8f9..7ea2c7732245 100644
  #define ELDO2_SEL_REG	0x1a
  #define ELDO2_1P8V	0x16
  #define ELDO2_CTRL_SHIFT 0x01
- 
 +#define FLDO_CTRL_REG   0x13
 +#define FLDO2_SEL_REG  0x1d
-+#define FLDO2_1P2V     0x0a
++#define FLDO2_1P2V      0x0a
 +#define FLDO2_CTRL_SHIFT 0x3
 +
 +/* TI SND9039 PMIC register hackery */
-+#define LDO9_REG	0x49
-+#define LDO10_REG	0x4a
-+#define LDO11_REG	0x4b
++#define LDO9_REG      0x49
++#define LDO10_REG     0x4a
++#define LDO11_REG     0x4b
 +
-+#define LDO_2P8V_ON	0x2f /* 0x2e selects 2.85V ...      */
-+#define LDO_2P8V_OFF	0x2e /* ... bottom bit is "enabled" */
++#define LDO_2P8V_ON   0x2f /* 0x2e selects 2.85V ...      */
++#define LDO_2P8V_OFF  0x2e /* ... bottom bit is "enabled" */
 +
-+#define LDO_1P8V_ON	0x59 /* 0x58 selects 1.80V ...      */
-+#define LDO_1P8V_OFF	0x58 /* ... bottom bit is "enabled" */
++#define LDO_1P8V_ON   0x59 /* 0x58 selects 1.80V ...      */
++#define LDO_1P8V_OFF  0x58 /* ... bottom bit is "enabled" */
 +
 +/* CRYSTAL COVE PMIC register hackery */
 +#define CRYSTAL_1P8V_REG        0x57
@@ -66,17 +57,15 @@ index edaae93af8f9..7ea2c7732245 100644
 +#define CRYSTAL_OFF     0x62
 +
 +/*Whiskey Cove reg*/
-+#define WCOVE_V1P8SX_CTRL	0x57
-+#define WCOVE_V2P8SX_CTRL	0x5d
-+#define WCOVE_CTRL_MASK		0x7
-+#define WCOVE_CTRL_ENABLE	0x2
-+#define WCOVE_CTRL_DISABLE	0x0
-+
-+
++#define WCOVE_V1P8SX_CTRL     0x57
++#define WCOVE_V2P8SX_CTRL     0x5d
++#define WCOVE_CTRL_MASK               0x7
++#define WCOVE_CTRL_ENABLE     0x2
++#define WCOVE_CTRL_DISABLE    0x0
+ 
  struct gmin_subdev {
  	struct v4l2_subdev *subdev;
- 	int clock_num;
-@@ -47,6 +92,9 @@ struct gmin_subdev {
+@@ -45,6 +87,9 @@ struct gmin_subdev {
  	bool v2p8_on;
  	bool v1p2_on;
  	bool v2p8_vcm_on;
@@ -86,7 +75,7 @@ index edaae93af8f9..7ea2c7732245 100644
  };
  
  static struct gmin_subdev gmin_subdevs[MAX_SUBDEVS];
-@@ -102,6 +150,220 @@ const struct atomisp_camera_caps *atomisp_get_default_camera_caps(void)
+@@ -100,6 +145,220 @@ const struct atomisp_camera_caps *atomisp_get_default_camera_caps(void)
  }
  EXPORT_SYMBOL_GPL(atomisp_get_default_camera_caps);
  
@@ -307,7 +296,7 @@ index edaae93af8f9..7ea2c7732245 100644
  const struct atomisp_platform_data *atomisp_get_platform_data(void)
  {
  	return &pdata;
-@@ -198,6 +460,8 @@ int atomisp_register_i2c_module(struct v4l2_subdev *subdev,
+@@ -153,6 +412,8 @@ int atomisp_register_i2c_module(struct v4l2_subdev *subdev,
  	bi->flags = client->flags;
  	bi->addr = client->addr;
  	bi->irq = client->irq;
@@ -316,7 +305,7 @@ index edaae93af8f9..7ea2c7732245 100644
  	bi->platform_data = plat_data;
  
  	return 0;
-@@ -274,6 +538,21 @@ static const struct gmin_cfg_var t100_vars[] = {
+@@ -229,6 +490,21 @@ static const struct gmin_cfg_var t100_vars[] = {
  	{},
  };
  
@@ -338,7 +327,7 @@ index edaae93af8f9..7ea2c7732245 100644
  static const struct gmin_cfg_var mrd7_vars[] = {
  	{"INT33F8:00_CamType", "1"},
  	{"INT33F8:00_CsiPort", "1"},
-@@ -322,6 +601,7 @@ static const struct {
+@@ -277,6 +553,7 @@ static const struct {
  } hard_vars[] = {
  	{ "BYT-T FFD8", ffrd8_vars },
  	{ "T100TA", t100_vars },
@@ -346,9 +335,9 @@ index edaae93af8f9..7ea2c7732245 100644
  	{ "MRD7", mrd7_vars },
  	{ "ST70408", ecs7_vars },
  	{ "VTA0803", i8880_vars },
-@@ -344,14 +624,32 @@ static int gmin_platform_deinit(void)
- 	return 0;
- }
+@@ -292,14 +569,32 @@ static const struct {
+ #define GMIN_PMC_CLK_NAME 14 /* "pmc_plt_clk_[0..5]" */
+ static char gmin_pmc_clk_name[GMIN_PMC_CLK_NAME];
  
 +static int match_i2c_name(struct device *dev, void *name)
 +{
@@ -381,7 +370,7 @@ index edaae93af8f9..7ea2c7732245 100644
  
  	if (!client)
  		return NULL;
-@@ -367,6 +665,7 @@ static struct gmin_subdev *gmin_subdev_add(struct v4l2_subdev *subdev)
+@@ -315,6 +610,7 @@ static struct gmin_subdev *gmin_subdev_add(struct v4l2_subdev *subdev)
  		"gmin: initializing atomisp module subdev data.PMIC ID %d\n",
  		pmic_id);
  
@@ -389,36 +378,36 @@ index edaae93af8f9..7ea2c7732245 100644
  	gmin_subdevs[i].subdev = subdev;
  	gmin_subdevs[i].clock_num = gmin_get_var_int(dev, "CamClk", 0);
  	/*WA:CHT requires XTAL clock as PLL is not stable.*/
-@@ -377,6 +676,28 @@ static struct gmin_subdev *gmin_subdev_add(struct v4l2_subdev *subdev)
+@@ -325,6 +621,28 @@ static struct gmin_subdev *gmin_subdev_add(struct v4l2_subdev *subdev)
  	gmin_subdevs[i].gpio0 = gpiod_get_index(dev, NULL, 0, GPIOD_OUT_LOW);
  	gmin_subdevs[i].gpio1 = gpiod_get_index(dev, NULL, 1, GPIOD_OUT_LOW);
  
-+	/* DVDD of front camera  */
-+	gmin_subdevs[i].eldo1_1p8v       = ELDO1_1P6V;
-+	gmin_subdevs[i].eldo1_sel_reg    = ELDO1_SEL_REG;
-+	gmin_subdevs[i].eldo1_ctrl_shift = ELDO1_CTRL_SHIFT;
++        /* DVDD of front camera  */
++        gmin_subdevs[i].eldo1_1p8v       = ELDO1_1P6V;
++        gmin_subdevs[i].eldo1_sel_reg    = ELDO1_SEL_REG;
++        gmin_subdevs[i].eldo1_ctrl_shift = ELDO1_CTRL_SHIFT;
 +
-+	/* DOVDD of both cameras */
-+	gmin_subdevs[i].eldo2_1p8v       = ELDO2_1P8V;
-+	gmin_subdevs[i].eldo2_sel_reg    = ELDO2_SEL_REG;
-+	gmin_subdevs[i].eldo2_ctrl_shift = ELDO2_CTRL_SHIFT;
++        /* DOVDD of both cameras */
++        gmin_subdevs[i].eldo2_1p8v       = ELDO2_1P8V;
++        gmin_subdevs[i].eldo2_sel_reg    = ELDO2_SEL_REG;
++        gmin_subdevs[i].eldo2_ctrl_shift = ELDO2_CTRL_SHIFT;
 +
 +#if 0
-+	/* AVDD of both cameras */
-+	gmin_subdevs[i].aldo1_2p8v       = ALDO1_2P8V;
-+	gmin_subdevs[i].aldo1_sel_reg    = ALDO1_SEL_REG;
-+	gmin_subdevs[i].aldo1_ctrl_shift = ALDO1_CTRL_SHIFT;
++        /* AVDD of both cameras */
++        gmin_subdevs[i].aldo1_2p8v       = ALDO1_2P8V;
++        gmin_subdevs[i].aldo1_sel_reg    = ALDO1_SEL_REG;
++        gmin_subdevs[i].aldo1_ctrl_shift = ALDO1_CTRL_SHIFT;
 +#endif
 +
-+	/* DVDD of rear camera */
-+	gmin_subdevs[i].fldo2_1p2v       = FLDO2_1P2V;
-+	gmin_subdevs[i].fldo2_sel_reg    = FLDO2_SEL_REG;
-+	gmin_subdevs[i].fldo2_ctrl_shift = FLDO2_CTRL_SHIFT;
++        /* DVDD of rear camera */
++        gmin_subdevs[i].fldo2_1p2v       = FLDO2_1P2V;
++        gmin_subdevs[i].fldo2_sel_reg    = FLDO2_SEL_REG;
++        gmin_subdevs[i].fldo2_ctrl_shift = FLDO2_CTRL_SHIFT;
 +
- 	if (!IS_ERR(gmin_subdevs[i].gpio0)) {
- 		ret = gpiod_direction_output(gmin_subdevs[i].gpio0, 0);
- 		if (ret)
-@@ -443,6 +764,164 @@ static int gmin_gpio1_ctrl(struct v4l2_subdev *subdev, int on)
+ 	/* get PMC clock with clock framework */
+ 	snprintf(gmin_pmc_clk_name,
+ 		 sizeof(gmin_pmc_clk_name),
+@@ -412,6 +730,164 @@ static int gmin_gpio1_ctrl(struct v4l2_subdev *subdev, int on)
  	return -EINVAL;
  }
  
@@ -583,7 +572,7 @@ index edaae93af8f9..7ea2c7732245 100644
  static int gmin_v1p2_ctrl(struct v4l2_subdev *subdev, int on)
  {
  	struct gmin_subdev *gs = find_gmin_subdev(subdev);
-@@ -496,6 +975,32 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
+@@ -465,6 +941,32 @@ static int gmin_v1p8_ctrl(struct v4l2_subdev *subdev, int on)
  			return regulator_disable(gs->v1p8_reg);
  	}
  
@@ -616,7 +605,7 @@ index edaae93af8f9..7ea2c7732245 100644
  	return -EINVAL;
  }
  
-@@ -532,6 +1037,30 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
+@@ -501,6 +1003,30 @@ static int gmin_v2p8_ctrl(struct v4l2_subdev *subdev, int on)
  			return regulator_disable(gs->v2p8_reg);
  	}
  

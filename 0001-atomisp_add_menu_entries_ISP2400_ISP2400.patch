@@ -1,11 +1,11 @@
 diff --git a/drivers/staging/media/atomisp/pci/Kconfig b/drivers/staging/media/atomisp/pci/Kconfig
-index a72421431c7a..e3e00ade1d38 100644
+index 41f116d52060..3112d46ff889 100644
 --- a/drivers/staging/media/atomisp/pci/Kconfig
 +++ b/drivers/staging/media/atomisp/pci/Kconfig
-@@ -11,3 +11,26 @@  config VIDEO_ATOMISP
-           camera imaging subsystem.
-           To compile this driver as a module, choose M here: the
-           module will be called atomisp
+@@ -12,3 +12,26 @@ config VIDEO_ATOMISP
+          camera imaging subsystem.
+          To compile this driver as a module, choose M here: the
+          module will be called atomisp
 +
 +choice
 +        prompt "Intel Atom Image Signal Processor Driver Type"

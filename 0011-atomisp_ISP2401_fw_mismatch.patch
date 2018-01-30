@@ -1,20 +1,16 @@
 diff --git a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_firmware.c b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_firmware.c
-index 8158ea40d069..0cd12666cb57 100644
+index 8158ea40d069..de9e289cbc8a 100644
 --- a/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_firmware.c
 +++ b/drivers/staging/media/atomisp/pci/atomisp2/css2400/sh_css_firmware.c
-@@ -53,11 +53,11 @@ static struct firmware_header *firmware_header;
- /* The string STR is a place holder
-  * which will be replaced with the actual RELEASE_VERSION
-  * during package generation. Please do not modify  */
--#ifndef ISP2401
-+//#ifndef ISP2401
- static const char *release_version = STR(irci_stable_candrpv_0415_20150521_0458);
--#else
--static const char *release_version = STR(irci_ecr-master_20150911_0724);
--#endif
-+//#else
-+//static const char *release_version = STR(irci_ecr-master_20150911_0724);
-+//#endif
+@@ -185,7 +185,10 @@ sh_css_check_firmware_version(const char *fw_data)
+ 	file_header = &firmware_header->file_header;
  
- #define MAX_FW_REL_VER_NAME	300
- static char FW_rel_ver_name[MAX_FW_REL_VER_NAME] = "---";
+ 	if (strcmp(file_header->version, release_version) != 0) {
+-		return false;
++		printk("Warning: atomisp CSS code version (%s) and firmware version (%s) mismatch! Trying to load it anyway",
++				file_header->version, release_version);
++		//return false;
++		return true;
+ 	} else {
+ 		/* firmware version matches */
+ 		return true;
